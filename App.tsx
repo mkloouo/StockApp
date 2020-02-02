@@ -1,117 +1,157 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * Generated with the TypeScript template
- * https://github.com/react-native-community/react-native-template-typescript
- *
- * @format
- */
-
 import React from 'react';
 import {
+  FlatList,
   SafeAreaView,
-  StyleSheet,
-  ScrollView,
-  View,
-  Text,
   StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
 } from 'react-native';
+import {uuid} from 'uuidv4';
 
-import {
-  Header,
-  LearnMoreLinks,
-  Colors,
-  DebugInstructions,
-  ReloadInstructions,
-} from 'react-native/Libraries/NewAppScreen';
+const SYMBOLS = [
+  'APPL',
+  'MSFT',
+  'INTC',
+  'CMCSA',
+  'CSCO',
+  'EBAY',
+  'SIRI',
+  'FLEX',
+  'AMZN',
+  'FCEL',
+  'SBUX',
+  'HBAN',
+  'GILD',
+  'MRVL',
+  'PLUG',
+  'AMAT',
+  'CBLI',
+  'QCOM',
+  'NVDA',
+  'BBBY',
+];
 
-declare var global: {HermesInternal: null | {}};
+type Stock = {
+  name: string;
+  value: number;
+};
+
+async function* generateItems(count: number) {
+  const getRandomSymbol = () =>
+    SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)];
+
+  for (let i = 0; i < count; ++i) {
+    const symbol = getRandomSymbol();
+    const stockItem: Stock = await (await fetch(
+      'localhost:3030/api/v1/prices?company=' + symbol,
+      {
+        method: 'GET',
+      },
+    )).json();
+
+    yield {
+      id: uuid(),
+      name: symbol,
+      value: stockItem.value,
+    };
+  }
+}
+
+type DataItem = {
+  id: string;
+  name: string;
+  value: number;
+};
+
+const DATA: DataItem[] = [];
+
+(async () => {
+  for await (const item of generateItems(10)) {
+    DATA.push(item);
+  }
+})();
+
+type ItemParams = {
+  id: string;
+  name: string;
+  value: number;
+  selected: boolean;
+  onSelect: (id: any) => void;
+};
+
+function Item({id, name, value, selected, onSelect}: ItemParams) {
+  return (
+    <TouchableOpacity
+      onPress={() => onSelect(id)}
+      style={[
+        styles.item,
+        {backgroundColor: selected ? '#6e3b6e' : '#f9c2ff'},
+      ]}>
+      <Text style={styles.name}>{name}</Text>
+      <Text style={styles.value}>{value.toFixed(2)}</Text>
+    </TouchableOpacity>
+  );
+}
 
 const App = () => {
+  const [selected, setSelected] = React.useState(new Map());
+
+  const onSelect = React.useCallback(
+    id => {
+      const newSelected = new Map(selected);
+      newSelected.set(id, !selected.get(id));
+
+      setSelected(newSelected);
+    },
+    [selected],
+  );
+
   return (
     <>
       <StatusBar barStyle="dark-content" />
-      <SafeAreaView>
-        <ScrollView
-          contentInsetAdjustmentBehavior="automatic"
-          style={styles.scrollView}>
-          <Header />
-          {global.HermesInternal == null ? null : (
-            <View style={styles.engine}>
-              <Text style={styles.footer}>Engine: Hermes</Text>
-            </View>
+      <SafeAreaView style={styles.container}>
+        <FlatList
+          data={DATA}
+          renderItem={({item}) => (
+            <Item
+              id={item.id}
+              name={item.name}
+              value={item.value}
+              selected={!!selected.get(item.id)}
+              onSelect={onSelect}
+            />
           )}
-          <View style={styles.body}>
-            <View style={styles.sectionContainer}>
-              <Text style={styles.sectionTitle}>Step One</Text>
-              <Text style={styles.sectionDescription}>
-                Edit <Text style={styles.highlight}>App.tsx</Text> to change
-                this screen and then come back to see your edits.
-              </Text>
-            </View>
-            <View style={styles.sectionContainer}>
-              <Text style={styles.sectionTitle}>See Your Changes</Text>
-              <Text style={styles.sectionDescription}>
-                <ReloadInstructions />
-              </Text>
-            </View>
-            <View style={styles.sectionContainer}>
-              <Text style={styles.sectionTitle}>Debug</Text>
-              <Text style={styles.sectionDescription}>
-                <DebugInstructions />
-              </Text>
-            </View>
-            <View style={styles.sectionContainer}>
-              <Text style={styles.sectionTitle}>Learn More</Text>
-              <Text style={styles.sectionDescription}>
-                Read the docs to discover what to do next:
-              </Text>
-            </View>
-            <LearnMoreLinks />
-          </View>
-        </ScrollView>
+          keyExtractor={item => item.id}
+          extraData={selected}
+        />
       </SafeAreaView>
     </>
   );
 };
 
 const styles = StyleSheet.create({
-  scrollView: {
-    backgroundColor: Colors.lighter,
+  container: {
+    flex: 1,
   },
-  engine: {
-    position: 'absolute',
-    right: 0,
+  item: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 10,
+    marginVertical: 10,
+    marginHorizontal: 10,
   },
-  body: {
-    backgroundColor: Colors.white,
+  name: {
+    flexDirection: 'row',
+    color: 'white',
+    fontSize: 48,
+    fontWeight: 'bold',
   },
-  sectionContainer: {
-    marginTop: 32,
-    paddingHorizontal: 24,
-  },
-  sectionTitle: {
-    fontSize: 24,
-    fontWeight: '600',
-    color: Colors.black,
-  },
-  sectionDescription: {
-    marginTop: 8,
-    fontSize: 18,
-    fontWeight: '400',
-    color: Colors.dark,
-  },
-  highlight: {
-    fontWeight: '700',
-  },
-  footer: {
-    color: Colors.dark,
-    fontSize: 12,
-    fontWeight: '600',
-    padding: 4,
-    paddingRight: 12,
-    textAlign: 'right',
+  value: {
+    flexDirection: 'row',
+    color: 'white',
+    fontSize: 32,
   },
 });
 
